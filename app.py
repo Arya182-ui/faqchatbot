@@ -71,16 +71,19 @@ def generate_response(user_input):
     for faq in faqs:
         context += f"Q: {faq['question']}\nA: {faq['answer']}\n\n"
 
-    prompt = f"{context}\nUser: {user_input}\nChatbot:"
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that answers based on FAQs."},
+        {"role": "user", "content": f"{context}\nUser: {user_input}"}
+    ]
     
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",  # Use the latest available model
+        messages=messages,
         max_tokens=100,
         temperature=0.7,
     )
 
-    return response.choices[0].text.strip()
+    return response["choices"][0]["message"]["content"].strip()
 
 @app.route("/")
 def home():
