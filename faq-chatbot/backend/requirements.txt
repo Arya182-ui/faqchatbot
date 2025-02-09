@@ -1,4 +1,0 @@
-flask
-openai
-firebase-admin
-gunicorn
