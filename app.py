@@ -80,13 +80,19 @@ def chat():
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
 
-    response = generate_response(user_input)
+    try:
+        response = generate_response(user_input)
+        
+        if not response or "I'm not sure" in response:
+            db.collection("unanswered_questions").add({"question": user_input, "status": "pending"})
+            return jsonify({"response": "An admin will assist you shortly!"})
 
-    if "I'm not sure" in response or response == "":
-        db.collection("unanswered_questions").add({"question": user_input, "status": "pending"})
-        return jsonify({"response": "An admin will assist you shortly!"})
-
-    return jsonify({"response": response})
+        return jsonify({"response": response})
+    
+    except Exception as e:
+        print(f"❌ Error: {e}")  # Logs error in Render
+        return jsonify({"response": f"Error: {str(e)}"}), 500
+        
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
