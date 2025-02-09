@@ -1,4 +1,6 @@
 flask
-openai==0.28
 firebase-admin
 gunicorn
+requests
+transformers
+torch
