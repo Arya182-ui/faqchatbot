@@ -9,18 +9,31 @@ app = Flask(__name__)
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-firebase_json = "/etc/secrets/FIREBASE_KEY"
+import json
+import os
+
+firebase_json_path = "/etc/secrets/FIREBASE_KEY"
 
 try:
-    with open(firebase_json, "r") as file:
-        firebase_dict = json.load(file)
+    if not os.path.exists(firebase_json_path):
+        raise ValueError("Firebase secret file is missing.")
+
+    with open(firebase_json_path, "r") as file:
+        firebase_json = file.read().strip()  # Read and strip any extra whitespace
+    
+    if not firebase_json:
+        raise ValueError("Firebase JSON file is empty.")
+
+    firebase_dict = json.loads(firebase_json)
     print("Firebase JSON loaded successfully")
-except FileNotFoundError:
-    raise ValueError("Firebase secret file is missing.")
+
 except json.JSONDecodeError as e:
     raise ValueError(f"Error decoding Firebase JSON: {e}")
+except Exception as e:
+    raise ValueError(f"Unexpected error: {e}")
 
-firebase_dict = json.loads(firebase_json)
+
+firebase_dict = json.loads(firebase_json_path)
 cred = credentials.Certificate(firebase_dict)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
