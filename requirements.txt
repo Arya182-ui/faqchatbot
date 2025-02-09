@@ -4,3 +4,4 @@ gunicorn
 requests
 transformers
 torch
+groq
