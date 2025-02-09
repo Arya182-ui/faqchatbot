@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import openai
+import requests
 import os
 import json
 import tempfile
@@ -8,14 +8,15 @@ from firebase_admin import credentials, firestore
 
 app = Flask(__name__)
 
-# Set OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Hugging Face API Configuration
+HUGGINGFACE_API_KEY = os.getenv("HuggingFaceAPIKey")  # Ensure you set this in your environment
+API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct"
+HEADERS = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
 
 # Firebase JSON secret path (from Render secret mount or env)
 firebase_json_path = "/etc/secrets/FIREBASE_KEY"
 
 try:
-    # Read Firebase secret file
     with open(firebase_json_path, "r") as file:
         firebase_json = file.read().strip()
 
@@ -28,7 +29,7 @@ try:
     # Write JSON to a temp file for Firebase Admin SDK
     with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".json") as temp_file:
         temp_file.write(json.dumps(firebase_dict))
-        temp_file_path = temp_file.name  # Save file path
+        temp_file_path = temp_file.name  
 
     # Initialize Firebase
     cred = credentials.Certificate(temp_file_path)
@@ -40,50 +41,32 @@ except Exception as e:
 
 # FAQ dataset
 faqs = [
-    {"question": "What is your return policy?", 
-     "answer": "We accept returns within 7 days of purchase. Items must be in original condition."},
-
-    {"question": "How can I track my order?", 
-     "answer": "You can track your order in the 'Order History' section of your account."},
-
-    {"question": "Do you offer international shipping?", 
-     "answer": "Yes, we ship internationally. Shipping costs and times vary by location."},
-
-    {"question": "What payment methods do you accept?", 
-     "answer": "We accept Visa, MasterCard, PayPal, and other major payment methods."},
-
-    {"question": "How can I contact customer support?", 
-     "answer": "You can reach us via live chat, email at support@example.com, or call +1-800-123-4567."},
-
-    {"question": "Is my personal information secure?", 
-     "answer": "Yes, we use encryption and security best practices to protect your data."},
-
-    {"question": "How do I reset my password?", 
-     "answer": "Go to the login page, click 'Forgot Password,' and follow the instructions."},
-
-    {"question": "Can I cancel my order?", 
-     "answer": "Orders can be canceled within 12 hours of placement. Contact support for assistance."}
+    {"question": "What is your return policy?", "answer": "We accept returns within 7 days of purchase."},
+    {"question": "How can I track my order?", "answer": "Track your order in the 'Order History' section."},
+    {"question": "Do you offer international shipping?", "answer": "Yes, shipping varies by location."},
+    {"question": "What payment methods do you accept?", "answer": "We accept Visa, MasterCard, and PayPal."},
+    {"question": "How can I contact customer support?", "answer": "Email support@example.com or call +1-800-123-4567."},
+    {"question": "Is my personal information secure?", "answer": "Yes, we use security best practices."},
+    {"question": "How do I reset my password?", "answer": "Go to login page, click 'Forgot Password'."},
+    {"question": "Can I cancel my order?", "answer": "Orders can be canceled within 12 hours."}
 ]
 
 def generate_response(user_input):
-    """Generate AI response based on FAQs"""
+    """Generate AI response using Hugging Face API"""
     context = "Here are some frequently asked questions:\n"
     for faq in faqs:
         context += f"Q: {faq['question']}\nA: {faq['answer']}\n\n"
 
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that answers based on FAQs."},
-        {"role": "user", "content": f"{context}\nUser: {user_input}"}
-    ]
-    
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # Use the latest available model
-        messages=messages,
-        max_tokens=100,
-        temperature=0.7,
-    )
+    payload = {"inputs": f"{context}\nUser: {user_input}\nBot:"}
+    response = requests.post(API_URL, headers=HEADERS, json=payload)
 
-    return response["choices"][0]["message"]["content"].strip()
+    if response.status_code == 200:
+        try:
+            return response.json()[0]["generated_text"]
+        except (IndexError, KeyError):
+            return "I'm not sure, but I'll find out for you!"
+    else:
+        return "Error: Unable to process request."
 
 @app.route("/")
 def home():
