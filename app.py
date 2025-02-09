@@ -32,8 +32,10 @@ except json.JSONDecodeError as e:
 except Exception as e:
     raise ValueError(f"Unexpected error: {e}")
 
+with open(firebase_json_path, "r") as file:
+    firebase_json = file.read().strip()
 
-firebase_dict = json.loads(firebase_json_path)
+firebase_dict = json.loads(firebase_json)
 cred = credentials.Certificate(firebase_dict)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
