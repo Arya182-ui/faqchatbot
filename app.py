@@ -2,44 +2,43 @@ from flask import Flask, request, jsonify
 import openai
 import os
 import json
+import tempfile
 import firebase_admin
 from firebase_admin import credentials, firestore
 
 app = Flask(__name__)
 
+# Set OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-import json
-import os
-
+# Firebase JSON secret path (from Render secret mount or env)
 firebase_json_path = "/etc/secrets/FIREBASE_KEY"
 
 try:
-    if not os.path.exists(firebase_json_path):
-        raise ValueError("Firebase secret file is missing.")
-
+    # Read Firebase secret file
     with open(firebase_json_path, "r") as file:
-        firebase_json = file.read().strip()  # Read and strip any extra whitespace
-    
+        firebase_json = file.read().strip()
+
     if not firebase_json:
         raise ValueError("Firebase JSON file is empty.")
 
     firebase_dict = json.loads(firebase_json)
     print("Firebase JSON loaded successfully")
 
-except json.JSONDecodeError as e:
-    raise ValueError(f"Error decoding Firebase JSON: {e}")
+    # Write JSON to a temp file for Firebase Admin SDK
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".json") as temp_file:
+        temp_file.write(json.dumps(firebase_dict))
+        temp_file_path = temp_file.name  # Save file path
+
+    # Initialize Firebase
+    cred = credentials.Certificate(temp_file_path)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+
 except Exception as e:
     raise ValueError(f"Unexpected error: {e}")
 
-with open(firebase_json_path, "r") as file:
-    firebase_json = file.read().strip()
-
-firebase_dict = json.loads(firebase_json)
-cred = credentials.Certificate(firebase_dict)
-firebase_admin.initialize_app(cred)
-db = firestore.client()
-
+# FAQ dataset
 faqs = [
     {"question": "What is your return policy?", 
      "answer": "We accept returns within 7 days of purchase. Items must be in original condition."},
@@ -66,7 +65,6 @@ faqs = [
      "answer": "Orders can be canceled within 12 hours of placement. Contact support for assistance."}
 ]
 
-
 def generate_response(user_input):
     """Generate AI response based on FAQs"""
     context = "Here are some frequently asked questions:\n"
@@ -83,6 +81,10 @@ def generate_response(user_input):
     )
 
     return response.choices[0].text.strip()
+
+@app.route("/")
+def home():
+    return jsonify({"message": "Welcome to the chatbot API!"})
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -101,4 +103,4 @@ def chat():
     return jsonify({"response": response})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
