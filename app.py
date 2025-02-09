@@ -10,6 +10,10 @@ app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 firebase_json = os.getenv("FIREBASE_KEY")
+
+if not firebase_json:
+    raise ValueError("FIREBASE_JSON is missing or empty")
+    
 firebase_dict = json.loads(firebase_json)
 cred = credentials.Certificate(firebase_dict)
 firebase_admin.initialize_app(cred)
