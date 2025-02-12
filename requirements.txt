@@ -1,7 +1,0 @@
-flask
-firebase-admin
-gunicorn
-requests
-transformers
-torch
-groq
