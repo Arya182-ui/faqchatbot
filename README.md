@@ -23,8 +23,8 @@ Live Chat Integration is a real-time messaging system that enables seamless comm
 ## 📦 Installation & Setup
 ### 1️⃣ Clone the Repository
 ```sh
-git clone https://github.com/Arya182-ui/live-chat-integration.git
-cd live-chat-integration
+https://github.com/Arya182-ui/faqchatbot.git
+cd faqchatbot
 ```
 ### 2️⃣ Install Dependencies
 ```sh
